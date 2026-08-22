@@ -1,10 +1,12 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, Field
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 import json
 import uuid
 import random
+import csv
+import io
 
 app = FastAPI(title="Location API")
 
@@ -206,3 +208,52 @@ def delete_record(record_id: str):
     temp_file.replace(DATA_FILE)
 
     return {"deleted": record_id}
+
+
+@app.get("/records/export.csv")
+def export_records_csv(region: str = None, min_score: int = None, keyword: str = None):
+    records = []
+    if DATA_FILE.exists():
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    records.append(json.loads(line))
+
+    records.reverse()
+
+    if region:
+        records = [r for r in records if r["region"] == region]
+
+    if min_score:
+        records = [r for r in records if r["score"] >= min_score]
+
+    if keyword:
+        records = [r for r in records if keyword.lower() in r["memo"].lower()]
+
+    output = io.StringIO()
+    writer = csv.DictWriter(
+        output,
+        fieldnames=["id", "user_name", "region", "score", "memo", "lat", "lon", "created_at"],
+        quoting=csv.QUOTE_MINIMAL
+    )
+    writer.writeheader()
+    for record in records:
+        writer.writerow({
+            "id": record["id"],
+            "user_name": record["user_name"],
+            "region": record["region"],
+            "score": record["score"],
+            "memo": record["memo"],
+            "lat": record["lat"],
+            "lon": record["lon"],
+            "created_at": record["created_at"]
+        })
+
+    csv_content = output.getvalue()
+    csv_bytes = csv_content.encode("utf-8-sig")
+
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=records.csv"}
+    )

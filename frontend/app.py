@@ -171,6 +171,14 @@ try:
     if records:
         df_records = pd.DataFrame(records)
         st.dataframe(df_records)
+
+        csv_response = requests.get(f"{BACKEND_URL}/records/export.csv", timeout=5, params=filter_params)
+        st.download_button(
+            label="CSV로 내려받기",
+            data=csv_response.content,
+            file_name="records.csv",
+            mime="text/csv"
+        )
     else:
         st.warning("조건에 맞는 기록이 없습니다. 조건을 완화해보세요.")
 except requests.exceptions.RequestException:
