@@ -16,6 +16,20 @@ except requests.exceptions.RequestException as e:
     st.error(f"백엔드 연결 실패: {e}")
     st.stop()
 
+st.subheader("방문 기록 입력")
+with st.form("record_form"):
+    name = st.text_input("이름")
+    region = st.selectbox("지역", list(locations.keys()))
+    satisfaction = st.slider("만족도", 1, 5, 3)
+    memo = st.text_input("한 줄 메모")
+    submit_button = st.form_submit_button("기록 저장")
+
+    if submit_button:
+        if not name:
+            st.warning("이름을 입력해주세요")
+        else:
+            st.success(f"{name} | {region} | 만족도: {satisfaction} | {memo}")
+
 city = st.selectbox("지역 선택", list(locations.keys()))
 n_points = st.slider("랜덤 포인트 개수", 10, 200, 50)
 
