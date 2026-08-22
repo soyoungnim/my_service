@@ -28,7 +28,25 @@ with st.form("record_form"):
         if not name:
             st.warning("이름을 입력해주세요")
         else:
-            st.success(f"{name} | {region} | 만족도: {satisfaction} | {memo}")
+            try:
+                response = requests.post(
+                    f"{BACKEND_URL}/records",
+                    json={
+                        "user_name": name,
+                        "region": region,
+                        "score": satisfaction,
+                        "memo": memo
+                    },
+                    timeout=5
+                )
+                if response.status_code == 201:
+                    record_id = response.json().get("id")
+                    st.success(f"저장 완료! (id: {record_id})")
+                else:
+                    detail = response.json().get("detail", "알 수 없는 오류")
+                    st.error(f"저장 실패: {detail}")
+            except requests.exceptions.RequestException:
+                st.error("백엔드에 연결할 수 없습니다. 터미널 1에서 백엔드가 켜져 있는지 확인하세요.")
 
 city = st.selectbox("지역 선택", list(locations.keys()))
 n_points = st.slider("랜덤 포인트 개수", 10, 200, 50)
@@ -53,6 +71,19 @@ with col1:
 with col2:
     st.subheader("값 분포")
     st.bar_chart(df["value"])
+
+st.subheader("전체 기록")
+try:
+    records_response = requests.get(f"{BACKEND_URL}/records", timeout=5)
+    response_data = records_response.json()
+    records = response_data.get("records", [])
+    if records:
+        df_records = pd.DataFrame(records)
+        st.dataframe(df_records)
+    else:
+        st.info("아직 기록이 없습니다. 위에서 첫 기록을 남겨보세요.")
+except requests.exceptions.RequestException:
+    st.error("백엔드에서 기록을 불러올 수 없습니다.")
 
 st.subheader("원본 데이터")
 st.dataframe(df)
