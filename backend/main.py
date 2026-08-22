@@ -1,4 +1,10 @@
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from pathlib import Path
+from datetime import datetime, timezone, timedelta
+import json
+import uuid
+import random
 
 app = FastAPI(title="Location API")
 
@@ -12,6 +18,25 @@ LOCATIONS = {
     "강릉": {"lat": 37.7519, "lon": 128.8761},
     "제주": {"lat": 33.4996, "lon": 126.5312},
 }
+
+DATA_FILE = Path(__file__).parent / "data" / "records.jsonl"
+
+
+class RecordCreate(BaseModel):
+    user_name: str = Field(..., min_length=1, max_length=20)
+    region: str
+    score: int = Field(..., ge=1, le=5)
+    memo: str = Field(default="", max_length=100)
+
+
+class Record(RecordCreate):
+    id: str
+    lat: float
+    lon: float
+    created_at: str
+
+
+DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 
 @app.get("/")
@@ -29,3 +54,43 @@ def get_location(name: str):
     if name not in LOCATIONS:
         raise HTTPException(status_code=404, detail="location not found")
     return LOCATIONS[name]
+
+
+@app.post("/records", status_code=201, response_model=Record)
+def create_record(record_create: RecordCreate):
+    if record_create.region not in LOCATIONS:
+        raise HTTPException(status_code=400, detail="Invalid region")
+
+    base_location = LOCATIONS[record_create.region]
+    lat = base_location["lat"] + random.uniform(-0.01, 0.01)
+    lon = base_location["lon"] + random.uniform(-0.01, 0.01)
+    created_at = datetime.now(timezone(timedelta(hours=9))).isoformat()
+
+    record = {
+        "id": uuid.uuid4().hex[:8],
+        "user_name": record_create.user_name,
+        "region": record_create.region,
+        "score": record_create.score,
+        "memo": record_create.memo,
+        "lat": lat,
+        "lon": lon,
+        "created_at": created_at,
+    }
+
+    with open(DATA_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    return record
+
+
+@app.get("/records")
+def get_records():
+    records = []
+    if DATA_FILE.exists():
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    records.append(json.loads(line))
+
+    records.reverse()
+    return {"count": len(records), "records": records}
