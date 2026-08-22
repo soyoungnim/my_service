@@ -72,6 +72,35 @@ with col2:
     st.subheader("값 분포")
     st.bar_chart(df["value"])
 
+st.subheader("내 기록 조회")
+st.write("조회할 이름")
+col_name, col_button = st.columns([3, 1])
+with col_name:
+    search_name = st.text_input("조회할 이름", label_visibility="collapsed")
+with col_button:
+    st.write("")
+    search_button = st.button("내 기록 보기")
+
+if search_button:
+    try:
+        response = requests.get(f"{BACKEND_URL}/records/user/{search_name}", timeout=5)
+        data = response.json()
+        count = data.get("count", 0)
+        avg_score = data.get("avg_score", 0)
+        records = data.get("records", [])
+
+        if count == 0:
+            st.info(f"'{search_name}' 이름으로 남긴 기록이 없습니다.")
+        else:
+            metric_col1, metric_col2 = st.columns(2)
+            with metric_col1:
+                st.metric("내 기록 수", count)
+            with metric_col2:
+                st.metric("평균 만족도", avg_score)
+            st.dataframe(pd.DataFrame(records))
+    except requests.exceptions.RequestException:
+        st.error("백엔드에서 기록을 불러올 수 없습니다.")
+
 st.subheader("전체 기록")
 try:
     records_response = requests.get(f"{BACKEND_URL}/records", timeout=5)
