@@ -66,13 +66,9 @@ with tab1:
 
 with tab2:
     st.caption("내가 남긴 기록을 조회하고 관리합니다.")
-    st.write("조회할 이름")
-    col_name, col_button = st.columns([3, 1])
-    with col_name:
-        search_name = st.text_input("조회할 이름", label_visibility="collapsed")
-    with col_button:
-        st.write("")
-        search_button = st.button("내 기록 보기")
+    with st.form("search_record_form"):
+        search_name = st.text_input("조회할 이름")
+        search_button = st.form_submit_button("내 기록 보기")
 
     if search_button or (search_name and "last_search" in st.session_state and st.session_state.last_search == search_name):
         if search_button:
