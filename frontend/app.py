@@ -48,6 +48,27 @@ with st.form("record_form"):
             except requests.exceptions.RequestException:
                 st.error("백엔드에 연결할 수 없습니다. 터미널 1에서 백엔드가 켜져 있는지 확인하세요.")
 
+st.subheader("전체 현황")
+try:
+    stats_response = requests.get(f"{BACKEND_URL}/stats", timeout=5)
+    stats = stats_response.json()
+
+    metric_col1, metric_col2, metric_col3 = st.columns(3)
+    with metric_col1:
+        st.metric("총 기록 수", stats.get("total", 0))
+    with metric_col2:
+        st.metric("참여자 수", stats.get("user_count", 0))
+    with metric_col3:
+        st.metric("전체 평균 만족도", stats.get("overall_avg", 0))
+
+    by_region = stats.get("by_region", [])
+    if by_region:
+        region_df = pd.DataFrame(by_region)
+        region_df = region_df.set_index("region")
+        st.bar_chart(region_df["avg_score"])
+except requests.exceptions.RequestException:
+    st.error("백엔드에서 통계를 불러올 수 없습니다.")
+
 city = st.selectbox("지역 선택", list(locations.keys()))
 n_points = st.slider("랜덤 포인트 개수", 10, 200, 50)
 

@@ -119,3 +119,51 @@ def get_records_by_user(user_name: str):
         "avg_score": avg_score,
         "records": records
     }
+
+
+@app.get("/stats")
+def get_stats():
+    records = []
+    if DATA_FILE.exists():
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    records.append(json.loads(line))
+
+    if not records:
+        return {
+            "total": 0,
+            "user_count": 0,
+            "overall_avg": 0,
+            "by_region": []
+        }
+
+    total = len(records)
+    user_count = len(set(r["user_name"] for r in records))
+    overall_avg = round(sum(r["score"] for r in records) / total, 1)
+
+    region_stats = {}
+    for record in records:
+        region = record["region"]
+        if region not in region_stats:
+            region_stats[region] = {"count": 0, "total_score": 0}
+        region_stats[region]["count"] += 1
+        region_stats[region]["total_score"] += record["score"]
+
+    by_region = [
+        {
+            "region": region,
+            "count": stats["count"],
+            "avg_score": round(stats["total_score"] / stats["count"], 1)
+        }
+        for region, stats in region_stats.items()
+    ]
+
+    by_region.sort(key=lambda x: x["count"], reverse=True)
+
+    return {
+        "total": total,
+        "user_count": user_count,
+        "overall_avg": overall_avg,
+        "by_region": by_region
+    }
