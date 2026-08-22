@@ -16,6 +16,19 @@ except requests.exceptions.RequestException as e:
     st.error(f"백엔드 연결 실패: {e}")
     st.stop()
 
+st.sidebar.subheader("🔍 검색 조건")
+selected_region = st.sidebar.selectbox("지역", ["전체"] + list(locations.keys()))
+selected_min_score = st.sidebar.slider("최소 만족도", 1, 5, 1)
+search_memo = st.sidebar.text_input("메모 검색")
+
+filter_params = {}
+if selected_region != "전체":
+    filter_params["region"] = selected_region
+if selected_min_score > 1:
+    filter_params["min_score"] = selected_min_score
+if search_memo:
+    filter_params["keyword"] = search_memo
+
 st.subheader("방문 기록 입력")
 with st.form("record_form"):
     name = st.text_input("이름")
@@ -148,14 +161,18 @@ if search_button or (search_name and "last_search" in st.session_state and st.se
 
 st.subheader("전체 기록")
 try:
-    records_response = requests.get(f"{BACKEND_URL}/records", timeout=5)
+    records_response = requests.get(f"{BACKEND_URL}/records", timeout=5, params=filter_params)
     response_data = records_response.json()
     records = response_data.get("records", [])
+    record_count = response_data.get("count", 0)
+
+    st.sidebar.markdown(f"**조건에 맞는 기록: {record_count}건**")
+
     if records:
         df_records = pd.DataFrame(records)
         st.dataframe(df_records)
     else:
-        st.info("아직 기록이 없습니다. 위에서 첫 기록을 남겨보세요.")
+        st.warning("조건에 맞는 기록이 없습니다. 조건을 완화해보세요.")
 except requests.exceptions.RequestException:
     st.error("백엔드에서 기록을 불러올 수 없습니다.")
 

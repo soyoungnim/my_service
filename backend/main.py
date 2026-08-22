@@ -84,7 +84,7 @@ def create_record(record_create: RecordCreate):
 
 
 @app.get("/records")
-def get_records():
+def get_records(region: str = None, min_score: int = None, keyword: str = None):
     records = []
     if DATA_FILE.exists():
         with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -93,6 +93,16 @@ def get_records():
                     records.append(json.loads(line))
 
     records.reverse()
+
+    if region:
+        records = [r for r in records if r["region"] == region]
+
+    if min_score:
+        records = [r for r in records if r["score"] >= min_score]
+
+    if keyword:
+        records = [r for r in records if keyword.lower() in r["memo"].lower()]
+
     return {"count": len(records), "records": records}
 
 
