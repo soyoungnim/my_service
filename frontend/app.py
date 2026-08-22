@@ -102,7 +102,9 @@ with col_button:
     st.write("")
     search_button = st.button("내 기록 보기")
 
-if search_button:
+if search_button or (search_name and "last_search" in st.session_state and st.session_state.last_search == search_name):
+    if search_button:
+        st.session_state.last_search = search_name
     try:
         response = requests.get(f"{BACKEND_URL}/records/user/{search_name}", timeout=5)
         data = response.json()
@@ -119,6 +121,28 @@ if search_button:
             with metric_col2:
                 st.metric("평균 만족도", avg_score)
             st.dataframe(pd.DataFrame(records))
+
+            st.write("**기록 삭제**")
+            record_options = [
+                f"{r['id']} · {r['region']} · {r['score']} · {r['memo']}"
+                for r in records
+            ]
+            selected_record = st.selectbox("삭제할 기록 선택", record_options)
+
+            if st.button("선택한 기록 삭제"):
+                selected_id = selected_record.split(" · ")[0]
+                try:
+                    delete_response = requests.delete(
+                        f"{BACKEND_URL}/records/{selected_id}",
+                        timeout=5
+                    )
+                    if delete_response.status_code == 200:
+                        st.success("삭제했습니다")
+                        st.rerun()
+                    else:
+                        st.error("삭제에 실패했습니다.")
+                except requests.exceptions.RequestException:
+                    st.error("백엔드에서 기록을 삭제할 수 없습니다.")
     except requests.exceptions.RequestException:
         st.error("백엔드에서 기록을 불러올 수 없습니다.")
 

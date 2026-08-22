@@ -167,3 +167,32 @@ def get_stats():
         "overall_avg": overall_avg,
         "by_region": by_region
     }
+
+
+@app.delete("/records/{record_id}")
+def delete_record(record_id: str):
+    if not DATA_FILE.exists():
+        raise HTTPException(status_code=404, detail="Record not found")
+
+    records = []
+    found = False
+    with open(DATA_FILE, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                record = json.loads(line)
+                if record["id"] == record_id:
+                    found = True
+                else:
+                    records.append(record)
+
+    if not found:
+        raise HTTPException(status_code=404, detail="Record not found")
+
+    temp_file = DATA_FILE.with_suffix(".tmp")
+    with open(temp_file, "w", encoding="utf-8") as f:
+        for record in records:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    temp_file.replace(DATA_FILE)
+
+    return {"deleted": record_id}
